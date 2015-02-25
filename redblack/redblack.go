@@ -157,7 +157,6 @@ func (tree_p *RedBlackTree) Insert(key interface{}, value interface{}) int {
 	tree_p.m_sent_p.parent_p = target_p
 
 	if tree_p.TreeInsert(target_p) == 0 {
-		//delete		target_p
 		target_p = nil
 		return 0
 	}
@@ -361,13 +360,11 @@ func (tree_p *RedBlackTree) Delete(key interface{}) (interface{}, interface{}) {
 	} else {
 		ret_key = y_p.key
 		ret_value = y_p.value
-		//ret_p = y_p->fn_p
 	}
 
 	if (y_p.color == BLACK) {
 		tree_p.DeleteFixup(x_p)
 	}
-	//delete		y_p
 	y_p = nil
 
 	return ret_key, ret_value
@@ -409,15 +406,12 @@ func (tree_p *RedBlackTree) TreeDelete(target_p *TNODE) (interface{}, interface{
 	}
 
 	if (y_p != target_p) {
-		//ret_p = target_p->fn_p
 		ret_key = target_p.key
 		ret_value = target_p.value
 
-		//target_p->fn_p = y_p->fn_p
 		target_p.key = y_p.key
 		target_p.value = y_p.value
 	} else {
-		//ret_p = y_p->fn_p
 		ret_key = y_p.key
 		ret_value = y_p.value
 	}
@@ -425,7 +419,6 @@ func (tree_p *RedBlackTree) TreeDelete(target_p *TNODE) (interface{}, interface{
 	if (y_p.color == BLACK) {
 		tree_p.DeleteFixup(x_p)
 	}
-	//delete		y_p
 	y_p = nil
 
 	return ret_key, ret_value
@@ -555,7 +548,6 @@ func (tree_p *RedBlackTree) InorderWalk(node_p *TNODE, level int) {
 	}
 
 	tree_p.InorderWalk(node_p.left_p, level + 1)
-	//std: :cout << "key = " << *(node_p->fn_p) << ", level " << level << " \n"
 	tree_p.InorderWalk(node_p.right_p, level + 1)
 }
 

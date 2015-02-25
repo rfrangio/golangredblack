@@ -22,7 +22,7 @@ func cmp(key1 interface{}, key2 interface{}) int {
 func main() {
     rbtree := redblack.CreateNewRedBlackTree(cmp)
 
-	for i := 0; i < 1000000; i++ {
+	for i := 0; i < 10000000; i++ {
 		rbtree.Insert(i,i)
 	}
 
@@ -33,7 +33,7 @@ func main() {
 	rbtree.DoGetSubtreeDepths(&ldepth, &rdepth)
 	fmt.Printf("depths %d, %d \n", ldepth, rdepth);
 
-	for	i := 0; i < 1000000; i++{
+	for	i := 0; i < 10000000; i++{
 		rbtree.RemoveMaximum()
 	}
 
