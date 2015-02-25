@@ -22,7 +22,7 @@ func cmp(key1 interface{}, key2 interface{}) int {
 }
 
 func main() {
-    rbtree := redblack.CreateNewRedBlackTree(cmp)
+	rbtree := redblack.CreateNewRedBlackTree(cmp)
 
 	for i := 0; i < 10000000; i++ {
 		rbtree.Insert(i,i)
