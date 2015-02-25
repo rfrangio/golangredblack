@@ -7,16 +7,18 @@ import (
         )
 
 func cmp(key1 interface{}, key2 interface{}) int {
-  intKey1 := key1.(int)
-  intKey2 := key2.(int)
+	int_key1 := key1.(int)
+	int_key2 := key2.(int)
 
-  if intKey1 == intKey2 {
-    return 0
-  } else if intKey1 > intKey2 {
-    return 1
-  }
+	if int_key1 == int_key2 {
+		return 0
+	}
 
-  return -1
+	if int_key1 > int_key2 {
+		return 1
+	} else {
+		return -1
+	}
 }
 
 func main() {
