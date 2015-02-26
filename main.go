@@ -37,7 +37,7 @@ func cmp(key1 interface{}, key2 interface{}) int {
 }
 
 func main() {
-	rbtree := redblack.ConstructRedBlackTree(cmp, 1000)
+	rbtree := redblack.ConstructRedBlackTree(cmp, 0)
 	rbtreec := redblack.ConstructRedBlackTree(cmp_c, 1000)
 	
 	rbtreec.Insert("a","a")

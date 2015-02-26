@@ -32,6 +32,7 @@ type RedBlackTree struct {
 	m_sentinel tNODE
 	cmp_p  Comparator
 	bufferpool chan *tNODE
+	max_pool uint32
 }
 
 func constructtNODE(key interface{}, value interface{}) *tNODE {
@@ -56,6 +57,7 @@ func ConstructRedBlackTree(cmp_p Comparator, max_pool uint32)  *RedBlackTree {
 	tree_p.m_root_p.right_p = tree_p.m_sentinel_p
 	tree_p.cmp_p = cmp_p
 	tree_p.bufferpool = make(chan *tNODE, max_pool)
+	tree_p.max_pool = max_pool
 	return tree_p
 }
 
@@ -151,6 +153,10 @@ func (tree_p *RedBlackTree) treeInsert(target_p *tNODE) int {
 }
 func (tree_p *RedBlackTree) alloc() (*tNODE) {
 
+	if tree_p.max_pool == 0 {
+		return new (tNODE)
+	}
+
 	var ret_p *tNODE
 
 	select {
@@ -163,6 +169,10 @@ func (tree_p *RedBlackTree) alloc() (*tNODE) {
 }
 
 func (tree_p *RedBlackTree) free(free_p *tNODE) *tNODE {
+
+	if tree_p.max_pool == 0 {
+		return nil
+	}
 
 	select {
 	   case tree_p.bufferpool <- free_p:
