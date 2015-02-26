@@ -6,6 +6,21 @@ import (
          "./redblack"
         )
 
+func cmp_c(key1 interface{}, key2 interface{}) int {
+	char_key1 := key1.(string)
+	char_key2 := key2.(string)
+
+	if char_key1 ==char_key2 {
+		return 0
+	}
+
+	if char_key1 > char_key2 {
+		return 1
+	} else {
+		return -1
+	}
+}
+
 func cmp(key1 interface{}, key2 interface{}) int {
 	int_key1 := key1.(int)
 	int_key2 := key2.(int)
@@ -22,7 +37,10 @@ func cmp(key1 interface{}, key2 interface{}) int {
 }
 
 func main() {
-	rbtree := redblack.CreateNewRedBlackTree(cmp)
+	rbtree := redblack.ConstructRedBlackTree(cmp)
+	rbtreec := redblack.ConstructRedBlackTree(cmp_c)
+	
+	rbtreec.Insert("a","a")
 
 	for i := 0; i < 10000000; i++ {
 		rbtree.Insert(i,i)
