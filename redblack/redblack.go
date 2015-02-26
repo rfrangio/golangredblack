@@ -1,15 +1,22 @@
 package redblack 
 // Author: Robert B Frangioso
+import "fmt"
 
 type Comparator func(key1 interface{}, key2 interface{}) int
 
 type Color int
+type WalkType int
 
 const (  
 	RED Color = 1 + iota  
 	BLACK 
 )
 
+const (
+	PREORDER WalkType = 1 + iota
+	INORDER
+	POSTORDER
+)
 
 type NODE struct {
 	color Color 
@@ -541,19 +548,32 @@ func (tree_p *RedBlackTree) DoNodeCount() int {
 
 }
 
-func (tree_p *RedBlackTree) InorderWalk(node_p *NODE, level int) {
+func (tree_p *RedBlackTree) Walk(node_p *NODE, level int, walk_type WalkType) {
 
 	if (node_p == tree_p.m_sentinel_p) {
 		return
 	}
+	
+	if walk_type == PREORDER {
+		fmt.Printf("key %v, level %d\n", node_p.key, level) 
+	}
 
-	tree_p.InorderWalk(node_p.left_p, level + 1)
-	tree_p.InorderWalk(node_p.right_p, level + 1)
+	tree_p.Walk(node_p.left_p, level + 1, walk_type)
+
+	if walk_type == INORDER {
+		fmt.Printf("key %v, level %d\n", node_p.key, level) 
+	}
+
+	tree_p.Walk(node_p.right_p, level + 1, walk_type)
+
+	if walk_type == POSTORDER {
+		fmt.Printf("key %v, level %d\n", node_p.key, level) 
+	}
 }
 
-func (tree_p *RedBlackTree) DoWalk() {
+func (tree_p *RedBlackTree) DoWalk(walk_type WalkType) {
 
-	tree_p.InorderWalk(tree_p.m_root_p, 0)
+	tree_p.Walk(tree_p.m_root_p, 0, walk_type)
 
 }
 
