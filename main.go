@@ -2,8 +2,9 @@ package main
 // Author: Robert B Frangioso
 
 import (
-         "fmt"
-         "./redblack"
+        "fmt"
+        "./redblack"
+		"math/rand"
         )
 
 func cmp_c(key1 interface{}, key2 interface{}) int {
@@ -39,10 +40,14 @@ func cmp(key1 interface{}, key2 interface{}) int {
 func main() {
 	rbtree := redblack.ConstructRedBlackTree(cmp, 0)
 	rbtreec := redblack.ConstructRedBlackTree(cmp_c, 1000)
-	
+	var num_objects int = 10000000
+	var dups int
+
 	rbtreec.Insert("a","a")
 
-	for i := 0; i < 10000000; i++ {
+	fmt.Printf("Inserting %d sequential objects \n", num_objects)
+
+	for i := 0; i < num_objects; i++ {
 		rbtree.Insert(i,i)
 	}
 
@@ -53,7 +58,30 @@ func main() {
 	rbtree.DoGetSubtreeDepths(&ldepth, &rdepth)
 	fmt.Printf("depths %d, %d \n", ldepth, rdepth);
 
-	for	i := 0; i < 10000000; i++{
+	for	i := 0; i < num_objects; i++{
+		rbtree.RemoveMaximum()
+	}
+
+	node_count = rbtree.DoNodeCount();
+	fmt.Printf("node count %d \n", node_count);
+
+	fmt.Printf("Inserting %d random objects \n", num_objects)
+	node_count, ldepth, rdepth = 0, 0, 0
+
+	var entry int
+	for i := 0; i < num_objects; i++ {
+		entry = rand.Intn(num_objects)
+		if(rbtree.Insert(entry,entry) == 0) {
+			dups++
+		}
+	}
+
+	node_count = rbtree.DoNodeCount();
+	fmt.Printf("node count %d \n", node_count + dups);
+	rbtree.DoGetSubtreeDepths(&ldepth, &rdepth)
+	fmt.Printf("depths %d, %d \n", ldepth, rdepth);
+
+	for	i := 0; i < num_objects; i++{
 		rbtree.RemoveMaximum()
 	}
 
