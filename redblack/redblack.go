@@ -13,7 +13,8 @@ const (
 )
 
 const (
-	PREORDER WalkType = 1 + iota
+	SILENT WalkType = 1 + iota
+	PREORDER
 	INORDER
 	POSTORDER
 )
