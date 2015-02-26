@@ -31,6 +31,7 @@ type RedBlackTree struct {
 	m_sentinel_p *tNODE
 	m_sentinel tNODE
 	cmp_p  Comparator
+	bufferpool chan *tNODE
 }
 
 func constructtNODE(key interface{}, value interface{}) *tNODE {
@@ -40,7 +41,7 @@ func constructtNODE(key interface{}, value interface{}) *tNODE {
 	return node_p
 }
 
-func ConstructRedBlackTree(cmp_p Comparator)  *RedBlackTree {
+func ConstructRedBlackTree(cmp_p Comparator, max_pool uint32)  *RedBlackTree {
 	tree_p := new (RedBlackTree)
 	tree_p.m_sentinel.color = BLACK
 	tree_p.m_sentinel.parent_p = nil
@@ -54,6 +55,7 @@ func ConstructRedBlackTree(cmp_p Comparator)  *RedBlackTree {
 	tree_p.m_root_p.left_p = tree_p.m_sentinel_p
 	tree_p.m_root_p.right_p = tree_p.m_sentinel_p
 	tree_p.cmp_p = cmp_p
+	tree_p.bufferpool = make(chan *tNODE, max_pool)
 	return tree_p
 }
 
@@ -147,13 +149,37 @@ func (tree_p *RedBlackTree) treeInsert(target_p *tNODE) int {
 	return 1
 
 }
+func (tree_p *RedBlackTree) alloc() (*tNODE) {
+
+	var ret_p *tNODE
+
+	select {
+		case ret_p =  <- tree_p.bufferpool:
+		default:
+			ret_p = new (tNODE)
+	}
+
+	return ret_p
+}
+
+func (tree_p *RedBlackTree) free(free_p *tNODE) *tNODE {
+
+	select {
+	   case tree_p.bufferpool <- free_p:
+		default:
+	}
+
+	return nil
+}
 
 func (tree_p *RedBlackTree) Insert(key interface{}, value interface{}) int {
 
 	var target_p *tNODE
 	var temp_p *tNODE
 
-	target_p = new (tNODE)
+	//target_p = new (tNODE)
+	target_p = tree_p.alloc()
+
 	temp_p = tree_p.m_sentinel_p
 
 	target_p.left_p = tree_p.m_sentinel_p
@@ -165,9 +191,11 @@ func (tree_p *RedBlackTree) Insert(key interface{}, value interface{}) int {
 	tree_p.m_sentinel_p.parent_p = target_p
 
 	if tree_p.treeInsert(target_p) == 0 {
-		target_p = nil
+		// target_p = nil
+		target_p = tree_p.free(target_p)
 		return 0
 	}
+
 	tree_p.m_sentinel_p.parent_p = target_p
 
 	target_p.color = RED
@@ -373,7 +401,8 @@ func (tree_p *RedBlackTree) Delete(key interface{}) (interface{}, interface{}) {
 	if (y_p.color == BLACK) {
 		tree_p.deleteFixup(x_p)
 	}
-	y_p = nil
+	//y_p = nil
+	y_p = tree_p.free(y_p)
 
 	return ret_key, ret_value
 
@@ -427,7 +456,8 @@ func (tree_p *RedBlackTree) treeDelete(target_p *tNODE) (interface{}, interface{
 	if (y_p.color == BLACK) {
 		tree_p.deleteFixup(x_p)
 	}
-	y_p = nil
+	//y_p = nil
+	y_p = tree_p.free(y_p)
 
 	return ret_key, ret_value
 }
