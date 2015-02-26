@@ -5,13 +5,14 @@ import (
         "fmt"
         "./redblack"
 		"math/rand"
+		"time"
         )
 
 func cmp_c(key1 interface{}, key2 interface{}) int {
 	char_key1 := key1.(string)
 	char_key2 := key2.(string)
 
-	if char_key1 ==char_key2 {
+	if char_key1 == char_key2 {
 		return 0
 	}
 
@@ -38,11 +39,12 @@ func cmp(key1 interface{}, key2 interface{}) int {
 }
 
 func main() {
+
 	rbtree := redblack.ConstructRedBlackTree(cmp, 0)
 	rbtreec := redblack.ConstructRedBlackTree(cmp_c, 1000)
 	var num_objects int = 10000000
 	var dups int
-
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	rbtreec.Insert("a","a")
 
 	fmt.Printf("Inserting %d sequential objects \n", num_objects)
@@ -70,7 +72,7 @@ func main() {
 
 	var entry int
 	for i := 0; i < num_objects; i++ {
-		entry = rand.Intn(num_objects)
+		entry = r.Int()
 		if(rbtree.Insert(entry,entry) == 0) {
 			dups++
 		}
@@ -86,5 +88,5 @@ func main() {
 	}
 
 	node_count = rbtree.DoNodeCount();
-	fmt.Printf("node count %d \n", node_count);
+	fmt.Printf("node count %d, dups %d \n", node_count, dups);
 }
