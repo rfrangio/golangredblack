@@ -364,6 +364,26 @@ func (tree_p *RedBlackTree) search(key interface{}) *tNODE {
 	}
 }
 
+func (tree_p *RedBlackTree) Search(key interface{}) (interface{}, interface{}) {
+
+	var trv_p	*tNODE
+	trv_p = tree_p.m_root_p
+
+	for trv_p != tree_p.m_sentinel_p && tree_p.cmp_p(key, trv_p.key) != 0 {
+		if tree_p.cmp_p(key, trv_p.key) == -1 {
+			trv_p = trv_p.left_p
+		} else {
+			trv_p = trv_p.right_p
+		}
+	}
+
+	if trv_p == tree_p.m_sentinel_p {
+		return nil, nil
+	} else {
+		return trv_p.key, trv_p.value
+	}
+}
+
 func (tree_p *RedBlackTree) Delete(key interface{}) (interface{}, interface{}) {
 
 	var target_p, y_p, x_p *tNODE
