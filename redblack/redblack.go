@@ -1,4 +1,5 @@
-package redblack 
+package redblack
+
 // Author: Robert B Frangioso
 import "fmt"
 
@@ -7,9 +8,9 @@ type Comparator func(key1 interface{}, key2 interface{}) int
 type Color int
 type WalkType int
 
-const (  
-	RED Color = 1 + iota  
-	BLACK 
+const (
+	RED Color = 1 + iota
+	BLACK
 )
 
 const (
@@ -20,30 +21,30 @@ const (
 )
 
 type tNODE struct {
-	color Color 
-	left_p, right_p, parent_p  *tNODE
-	key interface{}
-	value interface{}
+	color                     Color
+	left_p, right_p, parent_p *tNODE
+	key                       interface{}
+	value                     interface{}
 }
 
 type RedBlackTree struct {
-	m_root_p *tNODE 
+	m_root_p     *tNODE
 	m_sentinel_p *tNODE
-	m_sentinel tNODE
-	cmp_p  Comparator
-	bufferpool chan *tNODE
-	max_pool uint32
+	m_sentinel   tNODE
+	cmp_p        Comparator
+	bufferpool   chan *tNODE
+	max_pool     uint32
 }
 
 func constructtNODE(key interface{}, value interface{}) *tNODE {
-	node_p := new (tNODE)
+	node_p := new(tNODE)
 	node_p.key = key
 	node_p.value = value
 	return node_p
 }
 
-func ConstructRedBlackTree(cmp_p Comparator, max_pool uint32)  *RedBlackTree {
-	tree_p := new (RedBlackTree)
+func ConstructRedBlackTree(cmp_p Comparator, max_pool uint32) *RedBlackTree {
+	tree_p := new(RedBlackTree)
 	tree_p.m_sentinel.color = BLACK
 	tree_p.m_sentinel.parent_p = nil
 	tree_p.m_sentinel.left_p = nil
@@ -119,7 +120,7 @@ func (tree_p *RedBlackTree) rightRotate(target_p *tNODE) {
 
 func (tree_p *RedBlackTree) treeInsert(target_p *tNODE) int {
 
-	var y_p, trv_p	*tNODE
+	var y_p, trv_p *tNODE
 	var ret int
 
 	y_p = tree_p.m_sentinel_p
@@ -151,18 +152,18 @@ func (tree_p *RedBlackTree) treeInsert(target_p *tNODE) int {
 	return 1
 
 }
-func (tree_p *RedBlackTree) alloc() (*tNODE) {
+func (tree_p *RedBlackTree) alloc() *tNODE {
 
 	if tree_p.max_pool == 0 {
-		return new (tNODE)
+		return new(tNODE)
 	}
 
 	var ret_p *tNODE
 
 	select {
-		case ret_p =  <- tree_p.bufferpool:
-		default:
-			ret_p = new (tNODE)
+	case ret_p = <-tree_p.bufferpool:
+	default:
+		ret_p = new(tNODE)
 	}
 
 	return ret_p
@@ -175,8 +176,8 @@ func (tree_p *RedBlackTree) free(free_p *tNODE) *tNODE {
 	}
 
 	select {
-	   case tree_p.bufferpool <- free_p:
-		default:
+	case tree_p.bufferpool <- free_p:
+	default:
 	}
 
 	return nil
@@ -267,10 +268,9 @@ func (tree_p *RedBlackTree) treeMinimum(target_p *tNODE) *tNODE {
 func (tree_p *RedBlackTree) Minimum() (interface{}, interface{}) {
 
 	var target_p *tNODE
-	var ret_key, ret_val interface{}	
+	var ret_key, ret_val interface{}
 
 	target_p = tree_p.m_root_p
-	
 
 	for target_p.left_p != tree_p.m_sentinel_p {
 		target_p = target_p.left_p
@@ -279,7 +279,7 @@ func (tree_p *RedBlackTree) Minimum() (interface{}, interface{}) {
 	ret_key = target_p.key
 	ret_val = target_p.value
 
-	return ret_key, ret_val 
+	return ret_key, ret_val
 }
 
 func (tree_p *RedBlackTree) treeMaximum(target_p *tNODE) *tNODE {
@@ -298,8 +298,8 @@ func (tree_p *RedBlackTree) treeMaximum(target_p *tNODE) *tNODE {
 func (tree_p *RedBlackTree) RemoveMaximum() (interface{}, interface{}) {
 
 	var node_p *tNODE
-	var	ret_key interface{}
-	var	ret_value interface{}
+	var ret_key interface{}
+	var ret_value interface{}
 
 	node_p = tree_p.treeMaximum(tree_p.m_root_p)
 
@@ -346,7 +346,7 @@ func (tree_p *RedBlackTree) treeSuccessor(target_p *tNODE) *tNODE {
 
 func (tree_p *RedBlackTree) search(key interface{}) *tNODE {
 
-	var trv_p	*tNODE
+	var trv_p *tNODE
 	trv_p = tree_p.m_root_p
 
 	for trv_p != tree_p.m_sentinel_p && tree_p.cmp_p(key, trv_p.key) != 0 {
@@ -366,7 +366,7 @@ func (tree_p *RedBlackTree) search(key interface{}) *tNODE {
 
 func (tree_p *RedBlackTree) Search(key interface{}) (interface{}, interface{}) {
 
-	var trv_p	*tNODE
+	var trv_p *tNODE
 	trv_p = tree_p.m_root_p
 
 	for trv_p != tree_p.m_sentinel_p && tree_p.cmp_p(key, trv_p.key) != 0 {
@@ -392,7 +392,7 @@ func (tree_p *RedBlackTree) Delete(key interface{}) (interface{}, interface{}) {
 
 	target_p = tree_p.search(key)
 
-	if (target_p == nil) {
+	if target_p == nil {
 		return nil, nil
 	}
 
@@ -428,7 +428,7 @@ func (tree_p *RedBlackTree) Delete(key interface{}) (interface{}, interface{}) {
 		ret_value = y_p.value
 	}
 
-	if (y_p.color == BLACK) {
+	if y_p.color == BLACK {
 		tree_p.deleteFixup(x_p)
 	}
 	//y_p = nil
@@ -441,8 +441,8 @@ func (tree_p *RedBlackTree) Delete(key interface{}) (interface{}, interface{}) {
 func (tree_p *RedBlackTree) treeDelete(target_p *tNODE) (interface{}, interface{}) {
 
 	var y_p, x_p *tNODE
-	var	ret_key interface{}
-	var	ret_value interface{}
+	var ret_key interface{}
+	var ret_value interface{}
 
 	tree_p.m_sentinel_p.parent_p = target_p
 
@@ -472,7 +472,7 @@ func (tree_p *RedBlackTree) treeDelete(target_p *tNODE) (interface{}, interface{
 		y_p.parent_p.right_p = x_p
 	}
 
-	if (y_p != target_p) {
+	if y_p != target_p {
 		ret_key = target_p.key
 		ret_value = target_p.value
 
@@ -483,7 +483,7 @@ func (tree_p *RedBlackTree) treeDelete(target_p *tNODE) (interface{}, interface{
 		ret_value = y_p.value
 	}
 
-	if (y_p.color == BLACK) {
+	if y_p.color == BLACK {
 		tree_p.deleteFixup(x_p)
 	}
 	//y_p = nil
@@ -494,11 +494,10 @@ func (tree_p *RedBlackTree) treeDelete(target_p *tNODE) (interface{}, interface{
 
 func (tree_p *RedBlackTree) deleteFixup(target_p *tNODE) {
 
-	var w_p	*tNODE
+	var w_p *tNODE
 	tree_p.m_sentinel_p.parent_p = target_p
 
 	for target_p != tree_p.m_root_p && target_p.color == BLACK {
-
 
 		if target_p == target_p.parent_p.left_p {
 			w_p = target_p.parent_p.right_p
@@ -585,22 +584,22 @@ func (tree_p *RedBlackTree) deleteFixup(target_p *tNODE) {
 
 func (tree_p *RedBlackTree) nodeCount(node_p *tNODE, level int) int {
 
-	var	i int
-	i = 1	
+	var i int
+	i = 1
 
-	if (node_p == tree_p.m_sentinel_p) {
-		return 0 
+	if node_p == tree_p.m_sentinel_p {
+		return 0
 	}
 
-	i += tree_p.nodeCount(node_p.left_p, level + 1)
-	i += tree_p.nodeCount(node_p.right_p, level + 1)
+	i += tree_p.nodeCount(node_p.left_p, level+1)
+	i += tree_p.nodeCount(node_p.right_p, level+1)
 
 	return i
 }
 
 func (tree_p *RedBlackTree) DoNodeCount() int {
 
-	var ret int 
+	var ret int
 	ret = 0
 
 	ret = tree_p.nodeCount(tree_p.m_root_p, 0)
@@ -611,24 +610,24 @@ func (tree_p *RedBlackTree) DoNodeCount() int {
 
 func (tree_p *RedBlackTree) walk(node_p *tNODE, level int, walk_type WalkType) {
 
-	if (node_p == tree_p.m_sentinel_p) {
+	if node_p == tree_p.m_sentinel_p {
 		return
 	}
-	
+
 	if walk_type == PREORDER {
-		fmt.Printf("key %v, level %d\n", node_p.key, level) 
+		fmt.Printf("key %v, level %d\n", node_p.key, level)
 	}
 
-	tree_p.walk(node_p.left_p, level + 1, walk_type)
+	tree_p.walk(node_p.left_p, level+1, walk_type)
 
 	if walk_type == INORDER {
-		fmt.Printf("key %v, level %d\n", node_p.key, level) 
+		fmt.Printf("key %v, level %d\n", node_p.key, level)
 	}
 
-	tree_p.walk(node_p.right_p, level + 1, walk_type)
+	tree_p.walk(node_p.right_p, level+1, walk_type)
 
 	if walk_type == POSTORDER {
-		fmt.Printf("key %v, level %d\n", node_p.key, level) 
+		fmt.Printf("key %v, level %d\n", node_p.key, level)
 	}
 }
 
@@ -643,17 +642,16 @@ func (tree_p *RedBlackTree) DoGetSubtreeDepths(left_tree *int, right_tree *int) 
 	tree_p.getSubtreeDepths(tree_p.m_root_p, 0, left_tree, 0, right_tree)
 }
 
-func (tree_p *RedBlackTree) getSubtreeDepths(node_p *tNODE, left_level int, left_tree *int, right_level int,right_tree *int) {
+func (tree_p *RedBlackTree) getSubtreeDepths(node_p *tNODE, left_level int, left_tree *int, right_level int, right_tree *int) {
 
-
-	if (node_p == tree_p.m_sentinel_p) {
+	if node_p == tree_p.m_sentinel_p {
 		return
 	}
 
-	tree_p.getSubtreeDepths(node_p.left_p, left_level + 1, left_tree, 0, right_tree)
-	tree_p.getSubtreeDepths(node_p.right_p, 0, left_tree, right_level + 1, right_tree)
+	tree_p.getSubtreeDepths(node_p.left_p, left_level+1, left_tree, 0, right_tree)
+	tree_p.getSubtreeDepths(node_p.right_p, 0, left_tree, right_level+1, right_tree)
 
-	if node_p.left_p ==tree_p.m_sentinel_p && node_p.right_p ==tree_p.m_sentinel_p {
+	if node_p.left_p == tree_p.m_sentinel_p && node_p.right_p == tree_p.m_sentinel_p {
 		if left_level > *left_tree {
 			*left_tree = left_level
 		}
@@ -662,4 +660,3 @@ func (tree_p *RedBlackTree) getSubtreeDepths(node_p *tNODE, left_level int, left
 		}
 	}
 }
-
