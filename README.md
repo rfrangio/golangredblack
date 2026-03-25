@@ -15,14 +15,20 @@ tree.Insert(10, "ten")
 value, ok := tree.Get(10)
 ```
 
+Build the demo:
+
+```sh
+make build
+```
+
 Run tests:
 
 ```sh
-go test ./...
+make test
 ```
 
-Run the demo:
+Run the demo from the top-level `bin/` directory:
 
 ```sh
-go run ./cmd/demo
+./bin/demo
 ```
