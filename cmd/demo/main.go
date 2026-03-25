@@ -1,7 +1,5 @@
 package main
 
-// Author: Robert B Frangioso
-
 import (
 	"fmt"
 	"golangredblack/redblack"
@@ -32,14 +30,14 @@ func cmpInt(key1 int, key2 int) int {
 func main() {
 	rbtree := redblack.New[int, int](cmpInt, 0)
 	rbtreec := redblack.New[string, string](cmpString, 1000)
-	var num_objects int = 1939347
+	var numObjects int = 1939347
 	var dups int
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	rbtreec.Insert("a", "a")
 
-	fmt.Printf("Inserting %d sequential objects \n", num_objects)
+	fmt.Printf("Inserting %d sequential objects \n", numObjects)
 
-	for i := 0; i < num_objects; i++ {
+	for i := 0; i < numObjects; i++ {
 		rbtree.Insert(i, i)
 	}
 
@@ -48,18 +46,18 @@ func main() {
 	ldepth, rdepth := rbtree.SubtreeDepths()
 	fmt.Printf("depths %d, %d \n", ldepth, rdepth)
 
-	for i := 0; i < num_objects; i++ {
+	for i := 0; i < numObjects; i++ {
 		rbtree.RemoveMax()
 	}
 
 	nodeCount = rbtree.Len()
 	fmt.Printf("node count %d \n", nodeCount)
 
-	fmt.Printf("Inserting %d random objects \n", num_objects)
+	fmt.Printf("Inserting %d random objects \n", numObjects)
 	nodeCount, ldepth, rdepth = 0, 0, 0
 
 	var entry int
-	for i := 0; i < num_objects; i++ {
+	for i := 0; i < numObjects; i++ {
 		entry = r.Int()
 		if !rbtree.Insert(entry, entry) {
 			dups++
@@ -71,7 +69,7 @@ func main() {
 	ldepth, rdepth = rbtree.SubtreeDepths()
 	fmt.Printf("depths %d, %d \n", ldepth, rdepth)
 
-	for i := 0; i < num_objects; i++ {
+	for i := 0; i < numObjects; i++ {
 		rbtree.RemoveMax()
 	}
 
