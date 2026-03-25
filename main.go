@@ -9,40 +9,29 @@ import (
 	"time"
 )
 
-func cmp_c(key1 interface{}, key2 interface{}) int {
-	char_key1 := key1.(string)
-	char_key2 := key2.(string)
-
-	if char_key1 == char_key2 {
+func cmpString(key1 string, key2 string) int {
+	if key1 == key2 {
 		return 0
 	}
-
-	if char_key1 > char_key2 {
+	if key1 > key2 {
 		return 1
-	} else {
-		return -1
 	}
+	return -1
 }
 
-func cmp(key1 interface{}, key2 interface{}) int {
-	int_key1 := key1.(int)
-	int_key2 := key2.(int)
-
-	if int_key1 == int_key2 {
+func cmpInt(key1 int, key2 int) int {
+	if key1 == key2 {
 		return 0
 	}
-
-	if int_key1 > int_key2 {
+	if key1 > key2 {
 		return 1
-	} else {
-		return -1
 	}
+	return -1
 }
 
 func main() {
-
-	rbtree := redblack.ConstructRedBlackTree(cmp, 0)
-	rbtreec := redblack.ConstructRedBlackTree(cmp_c, 1000)
+	rbtree := redblack.New[int, int](cmpInt, 0)
+	rbtreec := redblack.New[string, string](cmpString, 1000)
 	var num_objects int = 1939347
 	var dups int
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -54,40 +43,38 @@ func main() {
 		rbtree.Insert(i, i)
 	}
 
-	var node_count int
-	node_count = rbtree.DoNodeCount()
-	fmt.Printf("node count %d \n", node_count)
-	var ldepth, rdepth int
-	rbtree.DoGetSubtreeDepths(&ldepth, &rdepth)
+	nodeCount := rbtree.Len()
+	fmt.Printf("node count %d \n", nodeCount)
+	ldepth, rdepth := rbtree.SubtreeDepths()
 	fmt.Printf("depths %d, %d \n", ldepth, rdepth)
 
 	for i := 0; i < num_objects; i++ {
-		rbtree.RemoveMaximum()
+		rbtree.RemoveMax()
 	}
 
-	node_count = rbtree.DoNodeCount()
-	fmt.Printf("node count %d \n", node_count)
+	nodeCount = rbtree.Len()
+	fmt.Printf("node count %d \n", nodeCount)
 
 	fmt.Printf("Inserting %d random objects \n", num_objects)
-	node_count, ldepth, rdepth = 0, 0, 0
+	nodeCount, ldepth, rdepth = 0, 0, 0
 
 	var entry int
 	for i := 0; i < num_objects; i++ {
 		entry = r.Int()
-		if rbtree.Insert(entry, entry) == 0 {
+		if !rbtree.Insert(entry, entry) {
 			dups++
 		}
 	}
 
-	node_count = rbtree.DoNodeCount()
-	fmt.Printf("node count %d \n", node_count+dups)
-	rbtree.DoGetSubtreeDepths(&ldepth, &rdepth)
+	nodeCount = rbtree.Len()
+	fmt.Printf("node count %d \n", nodeCount+dups)
+	ldepth, rdepth = rbtree.SubtreeDepths()
 	fmt.Printf("depths %d, %d \n", ldepth, rdepth)
 
 	for i := 0; i < num_objects; i++ {
-		rbtree.RemoveMaximum()
+		rbtree.RemoveMax()
 	}
 
-	node_count = rbtree.DoNodeCount()
-	fmt.Printf("node count %d, dups %d \n", node_count, dups)
+	nodeCount = rbtree.Len()
+	fmt.Printf("node count %d, dups %d \n", nodeCount, dups)
 }

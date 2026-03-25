@@ -1,12 +1,9 @@
 package redblack
 
-// Author: Robert B Frangioso
-import "fmt"
-
-type Comparator func(key1 interface{}, key2 interface{}) int
+type Comparator[K any] func(a, b K) int
 
 type Color int
-type WalkType int
+type WalkOrder int
 
 const (
 	RED Color = 1 + iota
@@ -14,652 +11,454 @@ const (
 )
 
 const (
-	SILENT WalkType = 1 + iota
-	PREORDER
-	INORDER
-	POSTORDER
+	PreOrder WalkOrder = 1 + iota
+	InOrder
+	PostOrder
 )
 
-type tNODE struct {
-	color                     Color
-	left_p, right_p, parent_p *tNODE
-	key                       interface{}
-	value                     interface{}
+type node[K any, V any] struct {
+	color               Color
+	left, right, parent *node[K, V]
+	key                 K
+	value               V
 }
 
-type RedBlackTree struct {
-	m_root_p     *tNODE
-	m_sentinel_p *tNODE
-	m_sentinel   tNODE
-	cmp_p        Comparator
-	bufferpool   chan *tNODE
-	max_pool     uint32
+type Tree[K any, V any] struct {
+	root       *node[K, V]
+	sentinel   *node[K, V]
+	cmp        Comparator[K]
+	bufferPool chan *node[K, V]
+	maxPool    uint32
+	len        int
 }
 
-func constructtNODE(key interface{}, value interface{}) *tNODE {
-	node_p := new(tNODE)
-	node_p.key = key
-	node_p.value = value
-	return node_p
-}
-
-func ConstructRedBlackTree(cmp_p Comparator, max_pool uint32) *RedBlackTree {
-	tree_p := new(RedBlackTree)
-	tree_p.m_sentinel.color = BLACK
-	tree_p.m_sentinel.key = nil
-	tree_p.m_sentinel.value = nil
-	tree_p.m_sentinel_p = &tree_p.m_sentinel
-	tree_p.m_sentinel.parent_p = tree_p.m_sentinel_p
-	tree_p.m_sentinel.left_p = tree_p.m_sentinel_p
-	tree_p.m_sentinel.right_p = tree_p.m_sentinel_p
-	tree_p.m_root_p = &tree_p.m_sentinel
-	tree_p.m_root_p.parent_p = tree_p.m_sentinel_p
-	tree_p.m_root_p.left_p = tree_p.m_sentinel_p
-	tree_p.m_root_p.right_p = tree_p.m_sentinel_p
-	tree_p.cmp_p = cmp_p
-	tree_p.bufferpool = make(chan *tNODE, max_pool)
-	tree_p.max_pool = max_pool
-	return tree_p
-}
-
-func (tree_p *RedBlackTree) leftRotate(target_p *tNODE) {
-
-	var y_p *tNODE
-	tree_p.m_sentinel_p.parent_p = target_p
-
-	y_p = target_p.right_p
-
-	target_p.right_p = y_p.left_p
-
-	if y_p.left_p != tree_p.m_sentinel_p {
-		y_p.left_p.parent_p = target_p
+func New[K any, V any](cmp Comparator[K], maxPool uint32) *Tree[K, V] {
+	tree := &Tree[K, V]{
+		cmp:        cmp,
+		bufferPool: make(chan *node[K, V], maxPool),
+		maxPool:    maxPool,
 	}
 
-	y_p.parent_p = target_p.parent_p
+	sentinel := &node[K, V]{color: BLACK}
+	sentinel.parent = sentinel
+	sentinel.left = sentinel
+	sentinel.right = sentinel
 
-	if target_p.parent_p == tree_p.m_sentinel_p {
-		tree_p.m_root_p = y_p
-
-	} else if target_p == target_p.parent_p.left_p {
-		target_p.parent_p.left_p = y_p
-	} else {
-		target_p.parent_p.right_p = y_p
-	}
-
-	y_p.left_p = target_p
-	target_p.parent_p = y_p
+	tree.sentinel = sentinel
+	tree.root = sentinel
+	return tree
 }
 
-func (tree_p *RedBlackTree) rightRotate(target_p *tNODE) {
-
-	tree_p.m_sentinel_p.parent_p = target_p
-
-	var x_p *tNODE
-	x_p = target_p.left_p
-
-	target_p.left_p = x_p.right_p
-
-	if x_p.right_p != tree_p.m_sentinel_p {
-		x_p.right_p.parent_p = target_p
-	}
-
-	x_p.parent_p = target_p.parent_p
-
-	if target_p.parent_p == tree_p.m_sentinel_p {
-		tree_p.m_root_p = x_p
-
-	} else if target_p == target_p.parent_p.right_p {
-		target_p.parent_p.right_p = x_p
-	} else {
-		target_p.parent_p.left_p = x_p
-	}
-
-	x_p.right_p = target_p
-	target_p.parent_p = x_p
+func (tree *Tree[K, V]) Len() int {
+	return tree.len
 }
 
-func (tree_p *RedBlackTree) treeInsert(target_p *tNODE) int {
+func (tree *Tree[K, V]) Insert(key K, value V) bool {
+	target := tree.alloc()
+	target.left = tree.sentinel
+	target.right = tree.sentinel
+	target.parent = tree.sentinel
+	target.key = key
+	target.value = value
 
-	var y_p, trv_p *tNODE
-	var ret int
+	if !tree.treeInsert(target) {
+		tree.free(target)
+		return false
+	}
 
-	y_p = tree_p.m_sentinel_p
-	trv_p = tree_p.m_root_p
-
-	tree_p.m_sentinel_p.parent_p = tree_p.m_sentinel_p
-
-	for trv_p != tree_p.m_sentinel_p {
-		y_p = trv_p
-		ret = tree_p.cmp_p(target_p.key, trv_p.key)
-		if ret == -1 {
-			trv_p = trv_p.left_p
-		} else if ret == 1 {
-			trv_p = trv_p.right_p
+	target.color = RED
+	for target != tree.root && target.parent.color == RED {
+		if target.parent == target.parent.parent.left {
+			uncle := target.parent.parent.right
+			if uncle.color == RED {
+				target.parent.color = BLACK
+				uncle.color = BLACK
+				target.parent.parent.color = RED
+				target = target.parent.parent
+			} else if target == target.parent.right {
+				target = target.parent
+				tree.leftRotate(target)
+			} else {
+				target.parent.color = BLACK
+				target.parent.parent.color = RED
+				tree.rightRotate(target.parent.parent)
+			}
 		} else {
-			return 0
+			uncle := target.parent.parent.left
+			if uncle.color == RED {
+				target.parent.color = BLACK
+				uncle.color = BLACK
+				target.parent.parent.color = RED
+				target = target.parent.parent
+			} else if target == target.parent.left {
+				target = target.parent
+				tree.rightRotate(target)
+			} else {
+				target.parent.color = BLACK
+				target.parent.parent.color = RED
+				tree.leftRotate(target.parent.parent)
+			}
 		}
 	}
 
-	target_p.parent_p = y_p
-	if y_p == tree_p.m_sentinel_p {
-		tree_p.m_root_p = target_p
-
-	} else if tree_p.cmp_p(target_p.key, y_p.key) == -1 {
-		y_p.left_p = target_p
-	} else {
-		y_p.right_p = target_p
-	}
-	return 1
-
+	tree.root.color = BLACK
+	tree.len++
+	return true
 }
-func (tree_p *RedBlackTree) alloc() *tNODE {
 
-	if tree_p.max_pool == 0 {
-		return new(tNODE)
+func (tree *Tree[K, V]) Get(key K) (V, bool) {
+	found := tree.search(key)
+	if found == nil {
+		var zero V
+		return zero, false
+	}
+	return found.value, true
+}
+
+func (tree *Tree[K, V]) Delete(key K) (K, V, bool) {
+	target := tree.search(key)
+	if target == nil {
+		var zeroKey K
+		var zeroValue V
+		return zeroKey, zeroValue, false
 	}
 
-	var ret_p *tNODE
+	deletedKey, deletedValue := target.key, target.value
+	tree.deleteNode(target)
+	tree.len--
+	return deletedKey, deletedValue, true
+}
+
+func (tree *Tree[K, V]) Min() (K, V, bool) {
+	if tree.root == tree.sentinel {
+		var zeroKey K
+		var zeroValue V
+		return zeroKey, zeroValue, false
+	}
+
+	minimum := tree.treeMinimum(tree.root)
+	return minimum.key, minimum.value, true
+}
+
+func (tree *Tree[K, V]) Max() (K, V, bool) {
+	maximum := tree.treeMaximum(tree.root)
+	if maximum == nil {
+		var zeroKey K
+		var zeroValue V
+		return zeroKey, zeroValue, false
+	}
+
+	return maximum.key, maximum.value, true
+}
+
+func (tree *Tree[K, V]) RemoveMax() (K, V, bool) {
+	maximum := tree.treeMaximum(tree.root)
+	if maximum == nil {
+		var zeroKey K
+		var zeroValue V
+		return zeroKey, zeroValue, false
+	}
+
+	key, value := maximum.key, maximum.value
+	tree.deleteNode(maximum)
+	tree.len--
+	return key, value, true
+}
+
+func (tree *Tree[K, V]) Walk(order WalkOrder, fn func(K, V) bool) {
+	if fn == nil {
+		return
+	}
+	tree.walk(tree.root, order, fn)
+}
+
+func (tree *Tree[K, V]) SubtreeDepths() (int, int) {
+	var leftDepth int
+	var rightDepth int
+	tree.getSubtreeDepths(tree.root, 0, &leftDepth, 0, &rightDepth)
+	return leftDepth, rightDepth
+}
+
+func (tree *Tree[K, V]) leftRotate(target *node[K, V]) {
+	y := target.right
+	target.right = y.left
+
+	if y.left != tree.sentinel {
+		y.left.parent = target
+	}
+
+	y.parent = target.parent
+	if target.parent == tree.sentinel {
+		tree.root = y
+	} else if target == target.parent.left {
+		target.parent.left = y
+	} else {
+		target.parent.right = y
+	}
+
+	y.left = target
+	target.parent = y
+}
+
+func (tree *Tree[K, V]) rightRotate(target *node[K, V]) {
+	x := target.left
+	target.left = x.right
+
+	if x.right != tree.sentinel {
+		x.right.parent = target
+	}
+
+	x.parent = target.parent
+	if target.parent == tree.sentinel {
+		tree.root = x
+	} else if target == target.parent.right {
+		target.parent.right = x
+	} else {
+		target.parent.left = x
+	}
+
+	x.right = target
+	target.parent = x
+}
+
+func (tree *Tree[K, V]) treeInsert(target *node[K, V]) bool {
+	parent := tree.sentinel
+	current := tree.root
+
+	for current != tree.sentinel {
+		parent = current
+		comparison := tree.cmp(target.key, current.key)
+		switch {
+		case comparison < 0:
+			current = current.left
+		case comparison > 0:
+			current = current.right
+		default:
+			return false
+		}
+	}
+
+	target.parent = parent
+	if parent == tree.sentinel {
+		tree.root = target
+	} else if tree.cmp(target.key, parent.key) < 0 {
+		parent.left = target
+	} else {
+		parent.right = target
+	}
+
+	return true
+}
+
+func (tree *Tree[K, V]) alloc() *node[K, V] {
+	if tree.maxPool == 0 {
+		return new(node[K, V])
+	}
 
 	select {
-	case ret_p = <-tree_p.bufferpool:
+	case existing := <-tree.bufferPool:
+		return existing
 	default:
-		ret_p = new(tNODE)
+		return new(node[K, V])
 	}
-
-	return ret_p
 }
 
-func (tree_p *RedBlackTree) free(free_p *tNODE) *tNODE {
+func (tree *Tree[K, V]) free(target *node[K, V]) {
+	if tree.maxPool == 0 {
+		return
+	}
 
-	if tree_p.max_pool == 0 {
+	var zeroKey K
+	var zeroValue V
+	target.left = tree.sentinel
+	target.right = tree.sentinel
+	target.parent = tree.sentinel
+	target.key = zeroKey
+	target.value = zeroValue
+	target.color = BLACK
+
+	select {
+	case tree.bufferPool <- target:
+	default:
+	}
+}
+
+func (tree *Tree[K, V]) treeMinimum(target *node[K, V]) *node[K, V] {
+	for target.left != tree.sentinel {
+		target = target.left
+	}
+	return target
+}
+
+func (tree *Tree[K, V]) treeMaximum(target *node[K, V]) *node[K, V] {
+	if tree.root == tree.sentinel {
 		return nil
 	}
 
-	select {
-	case tree_p.bufferpool <- free_p:
-	default:
+	for target.right != tree.sentinel {
+		target = target.right
+	}
+	return target
+}
+
+func (tree *Tree[K, V]) treeSuccessor(target *node[K, V]) *node[K, V] {
+	if target.right != tree.sentinel {
+		return tree.treeMinimum(target.right)
 	}
 
+	parent := target.parent
+	for parent != tree.sentinel && target == parent.right {
+		target = parent
+		parent = parent.parent
+	}
+
+	return parent
+}
+
+func (tree *Tree[K, V]) search(key K) *node[K, V] {
+	current := tree.root
+	for current != tree.sentinel {
+		comparison := tree.cmp(key, current.key)
+		switch {
+		case comparison < 0:
+			current = current.left
+		case comparison > 0:
+			current = current.right
+		default:
+			return current
+		}
+	}
 	return nil
 }
 
-func (tree_p *RedBlackTree) Insert(key interface{}, value interface{}) int {
-
-	var target_p *tNODE
-	var temp_p *tNODE
-
-	//target_p = new (tNODE)
-	target_p = tree_p.alloc()
-
-	temp_p = tree_p.m_sentinel_p
-
-	target_p.left_p = tree_p.m_sentinel_p
-	target_p.right_p = tree_p.m_sentinel_p
-	target_p.parent_p = tree_p.m_sentinel_p
-
-	target_p.key = key
-	target_p.value = value
-	tree_p.m_sentinel_p.parent_p = target_p
-
-	if tree_p.treeInsert(target_p) == 0 {
-		// target_p = nil
-		target_p = tree_p.free(target_p)
-		return 0
+func (tree *Tree[K, V]) deleteNode(target *node[K, V]) {
+	y := target
+	if target.left != tree.sentinel && target.right != tree.sentinel {
+		y = tree.treeSuccessor(target)
 	}
 
-	tree_p.m_sentinel_p.parent_p = target_p
+	var x *node[K, V]
+	if y.left != tree.sentinel {
+		x = y.left
+	} else {
+		x = y.right
+	}
 
-	target_p.color = RED
+	x.parent = y.parent
+	if y.parent == tree.sentinel {
+		tree.root = x
+	} else if y == y.parent.left {
+		y.parent.left = x
+	} else {
+		y.parent.right = x
+	}
 
-	for target_p != tree_p.m_root_p && target_p.parent_p.color == RED {
+	if y != target {
+		target.key = y.key
+		target.value = y.value
+	}
 
-		if target_p.parent_p == target_p.parent_p.parent_p.left_p {
+	if y.color == BLACK {
+		tree.deleteFixup(x)
+	}
 
-			temp_p = target_p.parent_p.parent_p.right_p
+	tree.free(y)
+}
 
-			if temp_p.color == RED {
-				target_p.parent_p.color = BLACK
-				temp_p.color = BLACK
-				target_p.parent_p.parent_p.color = RED
-				target_p = target_p.parent_p.parent_p
-			} else if target_p == target_p.parent_p.right_p {
-				target_p = target_p.parent_p
-				tree_p.leftRotate(target_p)
-			} else {
-				target_p.parent_p.color = BLACK
-				target_p.parent_p.parent_p.color = RED
-				tree_p.rightRotate(target_p.parent_p.parent_p)
+func (tree *Tree[K, V]) deleteFixup(target *node[K, V]) {
+	for target != tree.root && target.color == BLACK {
+		if target == target.parent.left {
+			sibling := target.parent.right
+			if sibling.color == RED {
+				sibling.color = BLACK
+				target.parent.color = RED
+				tree.leftRotate(target.parent)
+				sibling = target.parent.right
 			}
 
+			if sibling.left.color == BLACK && sibling.right.color == BLACK {
+				sibling.color = RED
+				target = target.parent
+			} else if sibling.right.color == BLACK {
+				sibling.left.color = BLACK
+				sibling.color = RED
+				tree.rightRotate(sibling)
+				sibling = target.parent.right
+			} else {
+				sibling.color = target.parent.color
+				target.parent.color = BLACK
+				sibling.right.color = BLACK
+				tree.leftRotate(target.parent)
+				target = tree.root
+			}
 		} else {
-
-			temp_p = target_p.parent_p.parent_p.left_p
-
-			if temp_p.color == RED {
-				target_p.parent_p.color = BLACK
-				temp_p.color = BLACK
-				target_p.parent_p.parent_p.color = RED
-				target_p = target_p.parent_p.parent_p
-			} else if target_p == target_p.parent_p.left_p {
-				target_p = target_p.parent_p
-				tree_p.rightRotate(target_p)
-			} else {
-				target_p.parent_p.color = BLACK
-				target_p.parent_p.parent_p.color = RED
-				tree_p.leftRotate(target_p.parent_p.parent_p)
+			sibling := target.parent.left
+			if sibling.color == RED {
+				sibling.color = BLACK
+				target.parent.color = RED
+				tree.rightRotate(target.parent)
+				sibling = target.parent.left
 			}
 
+			if sibling.right.color == BLACK && sibling.left.color == BLACK {
+				sibling.color = RED
+				target = target.parent
+			} else if sibling.left.color == BLACK {
+				sibling.right.color = BLACK
+				sibling.color = RED
+				tree.leftRotate(sibling)
+				sibling = target.parent.left
+			} else {
+				sibling.color = target.parent.color
+				target.parent.color = BLACK
+				sibling.left.color = BLACK
+				tree.rightRotate(target.parent)
+				target = tree.root
+			}
 		}
 	}
 
-	tree_p.m_root_p.color = BLACK
-	return 1
+	target.color = BLACK
 }
 
-func (tree_p *RedBlackTree) treeMinimum(target_p *tNODE) *tNODE {
-
-	for target_p.left_p != tree_p.m_sentinel_p {
-		target_p = target_p.left_p
+func (tree *Tree[K, V]) walk(current *node[K, V], order WalkOrder, fn func(K, V) bool) bool {
+	if current == tree.sentinel {
+		return true
 	}
 
-	return target_p
+	if order == PreOrder && !fn(current.key, current.value) {
+		return false
+	}
+	if !tree.walk(current.left, order, fn) {
+		return false
+	}
+	if order == InOrder && !fn(current.key, current.value) {
+		return false
+	}
+	if !tree.walk(current.right, order, fn) {
+		return false
+	}
+	if order == PostOrder && !fn(current.key, current.value) {
+		return false
+	}
+
+	return true
 }
 
-func (tree_p *RedBlackTree) Minimum() (interface{}, interface{}) {
-
-	var target_p *tNODE
-	var ret_key, ret_val interface{}
-
-	target_p = tree_p.m_root_p
-
-	for target_p.left_p != tree_p.m_sentinel_p {
-		target_p = target_p.left_p
-	}
-
-	ret_key = target_p.key
-	ret_val = target_p.value
-
-	return ret_key, ret_val
-}
-
-func (tree_p *RedBlackTree) treeMaximum(target_p *tNODE) *tNODE {
-
-	if tree_p.m_root_p == tree_p.m_sentinel_p {
-		return nil
-	}
-
-	for target_p.right_p != tree_p.m_sentinel_p {
-		target_p = target_p.right_p
-	}
-
-	return target_p
-}
-
-func (tree_p *RedBlackTree) RemoveMaximum() (interface{}, interface{}) {
-
-	var node_p *tNODE
-	var ret_key interface{}
-	var ret_value interface{}
-
-	node_p = tree_p.treeMaximum(tree_p.m_root_p)
-
-	if node_p == nil {
-		return nil, nil
-	}
-
-	ret_key = node_p.key
-	ret_value = node_p.value
-
-	tree_p.treeDelete(node_p)
-
-	return ret_key, ret_value
-}
-
-func (tree_p *RedBlackTree) Maximum() (interface{}, interface{}) {
-
-	var target_p *tNODE
-	target_p = tree_p.m_root_p
-
-	for target_p.right_p != tree_p.m_sentinel_p {
-		target_p = target_p.right_p
-	}
-
-	return target_p.key, target_p.value
-}
-
-func (tree_p *RedBlackTree) treeSuccessor(target_p *tNODE) *tNODE {
-
-	var trv_p *tNODE
-
-	if target_p.right_p != tree_p.m_sentinel_p {
-		return tree_p.treeMinimum(target_p.right_p)
-	}
-
-	trv_p = target_p.parent_p
-	for trv_p != tree_p.m_sentinel_p && target_p == trv_p.right_p {
-		target_p = trv_p
-		trv_p = trv_p.parent_p
-	}
-
-	return trv_p
-}
-
-func (tree_p *RedBlackTree) search(key interface{}) *tNODE {
-
-	var trv_p *tNODE
-	trv_p = tree_p.m_root_p
-
-	for trv_p != tree_p.m_sentinel_p && tree_p.cmp_p(key, trv_p.key) != 0 {
-		if tree_p.cmp_p(key, trv_p.key) == -1 {
-			trv_p = trv_p.left_p
-		} else {
-			trv_p = trv_p.right_p
-		}
-	}
-
-	if trv_p == tree_p.m_sentinel_p {
-		return nil
-	} else {
-		return trv_p
-	}
-}
-
-func (tree_p *RedBlackTree) Search(key interface{}) (interface{}, interface{}) {
-
-	var trv_p *tNODE
-	trv_p = tree_p.m_root_p
-
-	for trv_p != tree_p.m_sentinel_p && tree_p.cmp_p(key, trv_p.key) != 0 {
-		if tree_p.cmp_p(key, trv_p.key) == -1 {
-			trv_p = trv_p.left_p
-		} else {
-			trv_p = trv_p.right_p
-		}
-	}
-
-	if trv_p == tree_p.m_sentinel_p {
-		return nil, nil
-	} else {
-		return trv_p.key, trv_p.value
-	}
-}
-
-func (tree_p *RedBlackTree) Delete(key interface{}) (interface{}, interface{}) {
-
-	var target_p, y_p, x_p *tNODE
-	var ret_key interface{}
-	var ret_value interface{}
-
-	target_p = tree_p.search(key)
-
-	if target_p == nil {
-		return nil, nil
-	}
-
-	tree_p.m_sentinel_p.parent_p = target_p
-
-	if target_p.left_p == tree_p.m_sentinel_p || target_p.right_p == tree_p.m_sentinel_p {
-		y_p = target_p
-	} else {
-		y_p = tree_p.treeSuccessor(target_p)
-	}
-
-	if y_p.left_p != tree_p.m_sentinel_p {
-		x_p = y_p.left_p
-	} else {
-		x_p = y_p.right_p
-	}
-
-	x_p.parent_p = y_p.parent_p
-
-	if y_p.parent_p == tree_p.m_sentinel_p {
-		tree_p.m_root_p = x_p
-	} else if y_p == y_p.parent_p.left_p {
-		y_p.parent_p.left_p = x_p
-	} else {
-		y_p.parent_p.right_p = x_p
-	}
-
-	if y_p != target_p {
-		ret_key = target_p.key
-		ret_value = target_p.value
-
-		target_p.key = y_p.key
-		target_p.value = y_p.value
-	} else {
-		ret_key = y_p.key
-		ret_value = y_p.value
-	}
-
-	if y_p.color == BLACK {
-		tree_p.deleteFixup(x_p)
-	}
-	//y_p = nil
-	y_p = tree_p.free(y_p)
-
-	return ret_key, ret_value
-
-}
-
-func (tree_p *RedBlackTree) treeDelete(target_p *tNODE) (interface{}, interface{}) {
-
-	var y_p, x_p *tNODE
-	var ret_key interface{}
-	var ret_value interface{}
-
-	tree_p.m_sentinel_p.parent_p = target_p
-
-	if target_p == tree_p.m_sentinel_p {
-		return nil, nil
-	}
-
-	if target_p.left_p == tree_p.m_sentinel_p || target_p.right_p == tree_p.m_sentinel_p {
-		y_p = target_p
-	} else {
-		y_p = tree_p.treeSuccessor(target_p)
-	}
-
-	if y_p.left_p != tree_p.m_sentinel_p {
-		x_p = y_p.left_p
-	} else {
-		x_p = y_p.right_p
-	}
-
-	x_p.parent_p = y_p.parent_p
-
-	if y_p.parent_p == tree_p.m_sentinel_p {
-		tree_p.m_root_p = x_p
-	} else if y_p == y_p.parent_p.left_p {
-		y_p.parent_p.left_p = x_p
-	} else {
-		y_p.parent_p.right_p = x_p
-	}
-
-	if y_p != target_p {
-		ret_key = target_p.key
-		ret_value = target_p.value
-
-		target_p.key = y_p.key
-		target_p.value = y_p.value
-	} else {
-		ret_key = y_p.key
-		ret_value = y_p.value
-	}
-
-	if y_p.color == BLACK {
-		tree_p.deleteFixup(x_p)
-	}
-	//y_p = nil
-	y_p = tree_p.free(y_p)
-
-	return ret_key, ret_value
-}
-
-func (tree_p *RedBlackTree) deleteFixup(target_p *tNODE) {
-
-	var w_p *tNODE
-	tree_p.m_sentinel_p.parent_p = target_p
-
-	for target_p != tree_p.m_root_p && target_p.color == BLACK {
-
-		if target_p == target_p.parent_p.left_p {
-			w_p = target_p.parent_p.right_p
-			tree_p.m_sentinel_p.parent_p = w_p
-
-			if w_p.color == RED {
-				w_p.color = BLACK
-				target_p.parent_p.color = RED
-
-				tree_p.leftRotate(target_p.parent_p)
-
-				w_p = target_p.parent_p.right_p
-				tree_p.m_sentinel_p.parent_p = w_p
-			}
-
-			if w_p.left_p.color == BLACK && w_p.right_p.color == BLACK {
-				w_p.color = RED
-				target_p = target_p.parent_p
-			} else if w_p.right_p.color == BLACK {
-				w_p.left_p.color = BLACK
-				w_p.color = RED
-
-				tree_p.rightRotate(w_p)
-
-				w_p = target_p.parent_p.right_p
-				tree_p.m_sentinel_p.parent_p = w_p
-			} else {
-				w_p.color = target_p.parent_p.color
-				target_p.parent_p.color = BLACK
-				w_p.right_p.color = BLACK
-
-				tree_p.leftRotate(target_p.parent_p)
-
-				target_p = tree_p.m_root_p
-				tree_p.m_sentinel_p.parent_p = target_p
-			}
-
-		} else {
-
-			w_p = target_p.parent_p.left_p
-			tree_p.m_sentinel_p.parent_p = target_p
-
-			if w_p.color == RED {
-				w_p.color = BLACK
-				target_p.parent_p.color = RED
-
-				tree_p.rightRotate(target_p.parent_p)
-
-				w_p = target_p.parent_p.left_p
-				tree_p.m_sentinel_p.parent_p = w_p
-
-			}
-
-			if w_p.right_p.color == BLACK && w_p.left_p.color == BLACK {
-				w_p.color = RED
-				target_p = target_p.parent_p
-			} else if w_p.left_p.color == BLACK {
-				w_p.right_p.color = BLACK
-				w_p.color = RED
-
-				tree_p.leftRotate(w_p)
-
-				w_p = target_p.parent_p.left_p
-				tree_p.m_sentinel_p.parent_p = w_p
-			} else {
-
-				w_p.color = target_p.parent_p.color
-				target_p.parent_p.color = BLACK
-				w_p.left_p.color = BLACK
-
-				tree_p.rightRotate(target_p.parent_p)
-
-				target_p = tree_p.m_root_p
-				tree_p.m_sentinel_p.parent_p = target_p
-			}
-
-		}
-
-	}
-
-	target_p.color = BLACK
-
-}
-
-func (tree_p *RedBlackTree) nodeCount(node_p *tNODE, level int) int {
-
-	var i int
-	i = 1
-
-	if node_p == tree_p.m_sentinel_p {
-		return 0
-	}
-
-	i += tree_p.nodeCount(node_p.left_p, level+1)
-	i += tree_p.nodeCount(node_p.right_p, level+1)
-
-	return i
-}
-
-func (tree_p *RedBlackTree) DoNodeCount() int {
-
-	var ret int
-	ret = 0
-
-	ret = tree_p.nodeCount(tree_p.m_root_p, 0)
-
-	return ret
-
-}
-
-func (tree_p *RedBlackTree) walk(node_p *tNODE, level int, walk_type WalkType) {
-
-	if node_p == tree_p.m_sentinel_p {
+func (tree *Tree[K, V]) getSubtreeDepths(current *node[K, V], leftLevel int, leftDepth *int, rightLevel int, rightDepth *int) {
+	if current == tree.sentinel {
 		return
 	}
 
-	if walk_type == PREORDER {
-		fmt.Printf("key %v, level %d\n", node_p.key, level)
-	}
+	tree.getSubtreeDepths(current.left, leftLevel+1, leftDepth, 0, rightDepth)
+	tree.getSubtreeDepths(current.right, 0, leftDepth, rightLevel+1, rightDepth)
 
-	tree_p.walk(node_p.left_p, level+1, walk_type)
-
-	if walk_type == INORDER {
-		fmt.Printf("key %v, level %d\n", node_p.key, level)
-	}
-
-	tree_p.walk(node_p.right_p, level+1, walk_type)
-
-	if walk_type == POSTORDER {
-		fmt.Printf("key %v, level %d\n", node_p.key, level)
-	}
-}
-
-func (tree_p *RedBlackTree) DoWalk(walk_type WalkType) {
-
-	tree_p.walk(tree_p.m_root_p, 0, walk_type)
-
-}
-
-func (tree_p *RedBlackTree) DoGetSubtreeDepths(left_tree *int, right_tree *int) {
-
-	tree_p.getSubtreeDepths(tree_p.m_root_p, 0, left_tree, 0, right_tree)
-}
-
-func (tree_p *RedBlackTree) getSubtreeDepths(node_p *tNODE, left_level int, left_tree *int, right_level int, right_tree *int) {
-
-	if node_p == tree_p.m_sentinel_p {
-		return
-	}
-
-	tree_p.getSubtreeDepths(node_p.left_p, left_level+1, left_tree, 0, right_tree)
-	tree_p.getSubtreeDepths(node_p.right_p, 0, left_tree, right_level+1, right_tree)
-
-	if node_p.left_p == tree_p.m_sentinel_p && node_p.right_p == tree_p.m_sentinel_p {
-		if left_level > *left_tree {
-			*left_tree = left_level
+	if current.left == tree.sentinel && current.right == tree.sentinel {
+		if leftLevel > *leftDepth {
+			*leftDepth = leftLevel
 		}
-		if right_level > *right_tree {
-			*right_tree = right_level
+		if rightLevel > *rightDepth {
+			*rightDepth = rightLevel
 		}
 	}
 }
