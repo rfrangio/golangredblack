@@ -3,8 +3,8 @@ package main
 // Author: Robert B Frangioso
 
 import (
-	"./redblack"
 	"fmt"
+	"golangredblack/redblack"
 	"math/rand"
 	"time"
 )

@@ -46,12 +46,12 @@ func constructtNODE(key interface{}, value interface{}) *tNODE {
 func ConstructRedBlackTree(cmp_p Comparator, max_pool uint32) *RedBlackTree {
 	tree_p := new(RedBlackTree)
 	tree_p.m_sentinel.color = BLACK
-	tree_p.m_sentinel.parent_p = nil
-	tree_p.m_sentinel.left_p = nil
-	tree_p.m_sentinel.right_p = nil
 	tree_p.m_sentinel.key = nil
 	tree_p.m_sentinel.value = nil
 	tree_p.m_sentinel_p = &tree_p.m_sentinel
+	tree_p.m_sentinel.parent_p = tree_p.m_sentinel_p
+	tree_p.m_sentinel.left_p = tree_p.m_sentinel_p
+	tree_p.m_sentinel.right_p = tree_p.m_sentinel_p
 	tree_p.m_root_p = &tree_p.m_sentinel
 	tree_p.m_root_p.parent_p = tree_p.m_sentinel_p
 	tree_p.m_root_p.left_p = tree_p.m_sentinel_p
@@ -331,7 +331,7 @@ func (tree_p *RedBlackTree) treeSuccessor(target_p *tNODE) *tNODE {
 
 	var trv_p *tNODE
 
-	if target_p != tree_p.m_sentinel_p {
+	if target_p.right_p != tree_p.m_sentinel_p {
 		return tree_p.treeMinimum(target_p.right_p)
 	}
 
@@ -423,6 +423,9 @@ func (tree_p *RedBlackTree) Delete(key interface{}) (interface{}, interface{}) {
 	if y_p != target_p {
 		ret_key = target_p.key
 		ret_value = target_p.value
+
+		target_p.key = y_p.key
+		target_p.value = y_p.value
 	} else {
 		ret_key = y_p.key
 		ret_value = y_p.value
