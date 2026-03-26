@@ -1,4 +1,4 @@
-.PHONY: build test
+.PHONY: build test benchmark clean
 
 GOCACHE ?= /tmp/gocache
 BIN_DIR := bin
@@ -10,3 +10,10 @@ build:
 
 test:
 	GOCACHE=$(GOCACHE) go test ./...
+
+benchmark: build
+	/usr/bin/time ./$(DEMO_BIN)
+
+clean:
+	rm -rf $(BIN_DIR)
+	find . -type f \( -name '*.o' -o -name '*.obj' \) -delete
