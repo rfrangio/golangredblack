@@ -30,7 +30,7 @@ func cmpInt(key1 int, key2 int) int {
 func main() {
 	rbtree := redblack.New[int, int](cmpInt, 0)
 	rbtreec := redblack.New[string, string](cmpString, 1000)
-	var numObjects int = 1939347
+	var numObjects int = 10000000
 	var dups int
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	rbtreec.Insert("a", "a")
@@ -46,6 +46,7 @@ func main() {
 	ldepth, rdepth := rbtree.SubtreeDepths()
 	fmt.Printf("depths %d, %d \n", ldepth, rdepth)
 
+	fmt.Printf("Deleting %d objects \n", numObjects)
 	for i := 0; i < numObjects; i++ {
 		rbtree.RemoveMax()
 	}
@@ -69,6 +70,7 @@ func main() {
 	ldepth, rdepth = rbtree.SubtreeDepths()
 	fmt.Printf("depths %d, %d \n", ldepth, rdepth)
 
+	fmt.Printf("Deleting %d objects \n", numObjects)
 	for i := 0; i < numObjects; i++ {
 		rbtree.RemoveMax()
 	}
