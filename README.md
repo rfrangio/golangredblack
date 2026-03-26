@@ -27,8 +27,20 @@ Run tests:
 make test
 ```
 
+Run the benchmark:
+
+```sh
+make benchmark
+```
+
 Run the demo from the top-level `bin/` directory:
 
 ```sh
 ./bin/demo
+```
+
+Clean generated binaries and object files:
+
+```sh
+make clean
 ```
