@@ -12,7 +12,7 @@ test:
 	GOCACHE=$(GOCACHE) go test ./...
 
 benchmark: build
-	/usr/bin/time ./$(DEMO_BIN)
+	/usr/bin/time -p ./$(DEMO_BIN)
 
 clean:
 	rm -rf $(BIN_DIR)
